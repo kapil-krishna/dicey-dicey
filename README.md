@@ -27,7 +27,7 @@ The project is intentionally small and is designed as an exercise in writing cle
 | UI | Jetpack Compose |
 | Platform | Android |
 | Build | Gradle |
-| Minimum SDK | *(Specify when chosen)* |
+| Minimum SDK | 30 (target/compile SDK 37) |
 
 The application uses only standard Android and AndroidX libraries. No third-party dependencies are required.
 
@@ -90,11 +90,14 @@ Project documentation is split into separate documents.
 | Document | Purpose |
 |----------|---------|
 | README.md | Project overview |
-| FEATURES.md | Functional requirements |
-| ARCHITECTURE.md | Software architecture |
-| IMPLEMENTATION-PLAN.md | Step-by-step implementation roadmap |
+| docs/FEATURES.md | Functional requirements + the single acceptance checklist |
+| docs/ARCHITECTURE.md | Software architecture, layer contracts, resolved design decisions |
+| docs/IMPLEMENTATION-PLAN.md | Step-by-step implementation roadmap (phase work orders) |
+| docs/PROGRESS.md | Current status — read this first, update it last, every session |
+| AGENTS.md | How an AI agent should work in this repo |
 
 Keeping these documents separate helps ensure the implementation remains aligned with the design.
+Each one has exactly one job; none of them duplicate another's content.
 
 ---
 
