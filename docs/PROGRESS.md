@@ -14,7 +14,7 @@ sessions have no memory of this conversation; this file is the only thing that c
 
 ## Snapshot
 
-- **Current phase:** Phase 4 (Dice State & Engine) — complete. Phase 5 not started.
+- **Current phase:** Phase 5 (Basic Compose UI) — complete. Phase 6 not started.
 - **Last updated:** 2026-09-21
 - **Build status:** `./gradlew build` passes clean (compile, unit tests, lint, assemble).
 
@@ -28,7 +28,7 @@ sessions have no memory of this conversation; this file is the only thing that c
 | 2 | Dice Roll Generation | Done |
 | 3 | Die Face Dot Layout | Done |
 | 4 | Dice State & Engine | Done |
-| 5 | Basic Compose UI | Not started |
+| 5 | Basic Compose UI | Done |
 | 6 | Die Rendering | Not started |
 | 7 | Rolling Animation | Not started |
 | 8 | Integration | Not started |
@@ -42,6 +42,14 @@ Status values: `Not started`, `In progress`, `Done`, `Blocked`.
 
 Most recent entry first. Keep entries short — a few lines each, not a narrative.
 
+- **2026-09-21** — Phase 5 implemented: `ui/DieView.kt` (a `DieView` composable holding
+  `remember { DiceEngine() }`, mirroring `engine.state` into a `mutableStateOf` for recomposition,
+  showing the current face's pip count as centered text via `DieFace.fromInt`) and `MainActivity.kt`
+  updated to render it in place of the default "Hello Android" template (removed the unused
+  `Greeting`/`GreetingPreview` composables). Tap calls `startRoll()` then immediately
+  `completeRoll()` — no animation yet, deliberately deferred to Phase 7. Manually verified on a
+  Pixel 10 Pro emulator: app opens showing a value, tapping instantly shows a new value 1–6.
+  `./gradlew build` passes clean.
 - **2026-09-21** — Phase 4 implemented: `domain/DiceState.kt` (`sealed interface DiceState` with
   `Idle(faceValue)` / `Rolling(target)`) and `domain/DiceEngine.kt` (a class, not an object —
   holds mutable `state`, exposes `startRoll()`/`completeRoll()`). Purely synchronous: no
@@ -86,8 +94,6 @@ and only then proceed — don't leave it for the next session to re-derive.
 
 ## Next Action
 
-Start Phase 5 in `IMPLEMENTATION-PLAN.md`: create `ui/DieView.kt` and update `MainActivity.kt`.
-`remember { DiceEngine() }`, show the current face as plain text (dot rendering is Phase 6), and
-on tap call `startRoll()` followed immediately by `completeRoll()` — no animation yet, that's
-Phase 7. Domain layer is now fully complete and covered by tests; this phase is the first to
-touch Compose/UI code.
+Start Phase 6 in `IMPLEMENTATION-PLAN.md`: update `ui/DieView.kt` to replace the plain pip-count
+text with an actual drawn die face (Canvas or equivalent) using `DieFace.dotGrid()` from Phase 3,
+scaling correctly across screen sizes.
