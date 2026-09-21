@@ -14,7 +14,7 @@ sessions have no memory of this conversation; this file is the only thing that c
 
 ## Snapshot
 
-- **Current phase:** Phase 2 (Dice Roll Generation) — complete. Phase 3 not started.
+- **Current phase:** Phase 3 (Die Face Dot Layout) — complete. Phase 4 not started.
 - **Last updated:** 2026-09-21
 - **Build status:** `./gradlew build` passes clean (compile, unit tests, lint, assemble).
 
@@ -26,7 +26,7 @@ sessions have no memory of this conversation; this file is the only thing that c
 |---|---|---|
 | 1 | Project Foundation | Done |
 | 2 | Dice Roll Generation | Done |
-| 3 | Die Face Dot Layout | Not started |
+| 3 | Die Face Dot Layout | Done |
 | 4 | Dice State & Engine | Not started |
 | 5 | Basic Compose UI | Not started |
 | 6 | Die Rendering | Not started |
@@ -42,6 +42,11 @@ Status values: `Not started`, `In progress`, `Done`, `Blocked`.
 
 Most recent entry first. Keep entries short — a few lines each, not a narrative.
 
+- **2026-09-21** — Phase 3 implemented: `domain/DieFace.kt` (`enum class DieFace(val pips: Int)`
+  with `fromInt`, plus a `dotGrid(): List<List<Boolean>>` extension mapping each face to a
+  traditional 3x3 pip layout) and `test/domain/DieFaceTest.kt` (round-trip on `fromInt`, grid
+  shape, dot count matches pips, and explicit layout checks for ONE/FOUR/SIX). No
+  Compose/Android imports. `./gradlew build` passes clean.
 - **2026-09-21** — Phase 2 implemented: `domain/DiceRoller.kt` (`object DiceRoller { fun
   roll(random: Random = Random.Default): Int }`, uniform 1..6 via `random.nextInt(1, 7)`) and
   `test/domain/DiceRollerTest.kt` (range check over 1000 rolls; a seeded-`Random(42)` fairness
@@ -73,5 +78,6 @@ and only then proceed — don't leave it for the next session to re-derive.
 
 ## Next Action
 
-Start Phase 3 in `IMPLEMENTATION-PLAN.md`: create `domain/DieFace.kt` (enum + `dotGrid()`) and
-`test/domain/DieFaceTest.kt` per that phase's contract.
+Start Phase 4 in `IMPLEMENTATION-PLAN.md`: create `domain/DiceState.kt` (sealed interface
+`Idle`/`Rolling`) and `domain/DiceEngine.kt` (a class, never an object — see
+`ARCHITECTURE.md`'s Decision on timing ownership), plus `test/domain/DiceEngineTest.kt`.
