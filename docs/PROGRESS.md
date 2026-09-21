@@ -14,7 +14,7 @@ sessions have no memory of this conversation; this file is the only thing that c
 
 ## Snapshot
 
-- **Current phase:** Phase 1 (Project Foundation) — complete. Phase 2 not started.
+- **Current phase:** Phase 2 (Dice Roll Generation) — complete. Phase 3 not started.
 - **Last updated:** 2026-09-21
 - **Build status:** `./gradlew build` passes clean (compile, unit tests, lint, assemble).
 
@@ -25,7 +25,7 @@ sessions have no memory of this conversation; this file is the only thing that c
 | Phase | Name | Status |
 |---|---|---|
 | 1 | Project Foundation | Done |
-| 2 | Dice Roll Generation | Not started |
+| 2 | Dice Roll Generation | Done |
 | 3 | Die Face Dot Layout | Not started |
 | 4 | Dice State & Engine | Not started |
 | 5 | Basic Compose UI | Not started |
@@ -42,6 +42,11 @@ Status values: `Not started`, `In progress`, `Done`, `Blocked`.
 
 Most recent entry first. Keep entries short — a few lines each, not a narrative.
 
+- **2026-09-21** — Phase 2 implemented: `domain/DiceRoller.kt` (`object DiceRoller { fun
+  roll(random: Random = Random.Default): Int }`, uniform 1..6 via `random.nextInt(1, 7)`) and
+  `test/domain/DiceRollerTest.kt` (range check over 1000 rolls; a seeded-`Random(42)` fairness
+  check over 600 rolls asserting each face appears at least half its expected count). No Android
+  imports. `./gradlew build` passes clean.
 - **2026-09-21** — Deleted `domain/DiceState.kt` and `domain/DieEngine.kt`: both predated the
   contracts in `ARCHITECTURE.md` and did not compile (interface called as a constructor,
   reference to an undeclared `faceValue`, a custom `Seed` type passed where `Random` expects an
@@ -68,6 +73,5 @@ and only then proceed — don't leave it for the next session to re-derive.
 
 ## Next Action
 
-Start Phase 2 in `IMPLEMENTATION-PLAN.md`: create `domain/DiceRoller.kt` and a fresh
-`test/domain/DiceRollerTest.kt` per that phase's contract and Tests section. `domain/` is
-currently empty (just `.gitkeep`), so there's nothing to clean up first.
+Start Phase 3 in `IMPLEMENTATION-PLAN.md`: create `domain/DieFace.kt` (enum + `dotGrid()`) and
+`test/domain/DieFaceTest.kt` per that phase's contract.
