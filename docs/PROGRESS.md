@@ -14,7 +14,7 @@ sessions have no memory of this conversation; this file is the only thing that c
 
 ## Snapshot
 
-- **Current phase:** Phase 3 (Die Face Dot Layout) — complete. Phase 4 not started.
+- **Current phase:** Phase 4 (Dice State & Engine) — complete. Phase 5 not started.
 - **Last updated:** 2026-09-21
 - **Build status:** `./gradlew build` passes clean (compile, unit tests, lint, assemble).
 
@@ -27,7 +27,7 @@ sessions have no memory of this conversation; this file is the only thing that c
 | 1 | Project Foundation | Done |
 | 2 | Dice Roll Generation | Done |
 | 3 | Die Face Dot Layout | Done |
-| 4 | Dice State & Engine | Not started |
+| 4 | Dice State & Engine | Done |
 | 5 | Basic Compose UI | Not started |
 | 6 | Die Rendering | Not started |
 | 7 | Rolling Animation | Not started |
@@ -42,6 +42,14 @@ Status values: `Not started`, `In progress`, `Done`, `Blocked`.
 
 Most recent entry first. Keep entries short — a few lines each, not a narrative.
 
+- **2026-09-21** — Phase 4 implemented: `domain/DiceState.kt` (`sealed interface DiceState` with
+  `Idle(faceValue)` / `Rolling(target)`) and `domain/DiceEngine.kt` (a class, not an object —
+  holds mutable `state`, exposes `startRoll()`/`completeRoll()`). Purely synchronous: no
+  coroutines, no timers, no duration constant — that's deliberately deferred to Phase 7 per
+  `ARCHITECTURE.md`'s timing decision. `test/domain/DiceEngineTest.kt` covers: initial state,
+  idle→rolling on `startRoll()`, a second `startRoll()` while rolling being a no-op that leaves
+  `target` unchanged, `completeRoll()` moving rolling→idle with the target value, `completeRoll()`
+  while idle being a no-op, and rolling again after completing. `./gradlew build` passes clean.
 - **2026-09-21** — Phase 3 implemented: `domain/DieFace.kt` (`enum class DieFace(val pips: Int)`
   with `fromInt`, plus a `dotGrid(): List<List<Boolean>>` extension mapping each face to a
   traditional 3x3 pip layout) and `test/domain/DieFaceTest.kt` (round-trip on `fromInt`, grid
@@ -78,6 +86,8 @@ and only then proceed — don't leave it for the next session to re-derive.
 
 ## Next Action
 
-Start Phase 4 in `IMPLEMENTATION-PLAN.md`: create `domain/DiceState.kt` (sealed interface
-`Idle`/`Rolling`) and `domain/DiceEngine.kt` (a class, never an object — see
-`ARCHITECTURE.md`'s Decision on timing ownership), plus `test/domain/DiceEngineTest.kt`.
+Start Phase 5 in `IMPLEMENTATION-PLAN.md`: create `ui/DieView.kt` and update `MainActivity.kt`.
+`remember { DiceEngine() }`, show the current face as plain text (dot rendering is Phase 6), and
+on tap call `startRoll()` followed immediately by `completeRoll()` — no animation yet, that's
+Phase 7. Domain layer is now fully complete and covered by tests; this phase is the first to
+touch Compose/UI code.
