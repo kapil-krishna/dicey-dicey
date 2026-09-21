@@ -14,7 +14,7 @@ sessions have no memory of this conversation; this file is the only thing that c
 
 ## Snapshot
 
-- **Current phase:** Phase 5 (Basic Compose UI) — complete. Phase 6 not started.
+- **Current phase:** Phase 6 (Die Rendering) — complete. Phase 7 not started.
 - **Last updated:** 2026-09-21
 - **Build status:** `./gradlew build` passes clean (compile, unit tests, lint, assemble).
 
@@ -29,7 +29,7 @@ sessions have no memory of this conversation; this file is the only thing that c
 | 3 | Die Face Dot Layout | Done |
 | 4 | Dice State & Engine | Done |
 | 5 | Basic Compose UI | Done |
-| 6 | Die Rendering | Not started |
+| 6 | Die Rendering | Done |
 | 7 | Rolling Animation | Not started |
 | 8 | Integration | Not started |
 | 9 | Testing & Polish | Not started |
@@ -42,6 +42,11 @@ Status values: `Not started`, `In progress`, `Done`, `Blocked`.
 
 Most recent entry first. Keep entries short — a few lines each, not a narrative.
 
+- **2026-09-21** — Phase 6 implemented: `ui/DieView.kt` updated to replace the plain pip-count
+  text with an actual drawn die — a `Canvas` (60% of screen width, square aspect ratio) drawing a
+  white rounded-rect face and black dots positioned from `DieFace.dotGrid()` (Phase 3). No image
+  assets. Manually verified on the Pixel 10 Pro emulator: tapping cycles through all six faces
+  and each dot layout matches a traditional die. `./gradlew build` passes clean.
 - **2026-09-21** — Phase 5 implemented: `ui/DieView.kt` (a `DieView` composable holding
   `remember { DiceEngine() }`, mirroring `engine.state` into a `mutableStateOf` for recomposition,
   showing the current face's pip count as centered text via `DieFace.fromInt`) and `MainActivity.kt`
@@ -94,6 +99,9 @@ and only then proceed — don't leave it for the next session to re-derive.
 
 ## Next Action
 
-Start Phase 6 in `IMPLEMENTATION-PLAN.md`: update `ui/DieView.kt` to replace the plain pip-count
-text with an actual drawn die face (Canvas or equivalent) using `DieFace.dotGrid()` from Phase 3,
-scaling correctly across screen sizes.
+Start Phase 7 in `IMPLEMENTATION-PLAN.md`: create `animation/RollAnimation.kt` and update
+`ui/DieView.kt` to remove the Phase 5 shortcut (immediate `completeRoll()`). On `startRoll()`
+returning `true`, run a `LaunchedEffect` shake for ~5 seconds, then call `completeRoll()`. The
+duration constant lives in the animation layer, not the domain — see `ARCHITECTURE.md`'s
+Decision on timing ownership. This is the last phase with meaningful new logic; Phase 8 is just
+integration verification and Phase 9 is the final Acceptance Criteria pass.
