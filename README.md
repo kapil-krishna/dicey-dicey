@@ -11,10 +11,10 @@ The project is intentionally small and is designed as an exercise in writing cle
 ## Features
 
 - Roll a standard six-sided die
-- Smooth rolling animation
+- Smooth 3D rolling animation
 - Uniform random outcomes (1–6)
 - Tap the die repeatedly with no cooldown
-- Programmatically rendered die faces (no image assets)
+- Die rendered as a real 3D model (see `docs/ARCHITECTURE.md` § 3D Die Model)
 - Minimal user interface
 
 ---
@@ -28,8 +28,10 @@ The project is intentionally small and is designed as an exercise in writing cle
 | Platform | Android |
 | Build | Gradle |
 | Minimum SDK | 30 (target/compile SDK 37) |
+| 3D Rendering | SceneView for Jetpack Compose (Filament), for the die model only |
 
-The application uses only standard Android and AndroidX libraries. No third-party dependencies are required.
+The application otherwise uses only standard Android and AndroidX libraries. The 3D rendering
+library is the one sanctioned exception — see `docs/ARCHITECTURE.md` § Dependencies for why.
 
 ---
 
@@ -56,13 +58,15 @@ app/
  │   │   ├── java/
  │   │   ├── ui/
  │   │   ├── domain/
- │   │   └── animation/
+ │   │   ├── animation/
+ │   │   └── assets/       — the die's .glb 3D model (see ARCHITECTURE.md § 3D Die Model)
  │   └── test/
  │
 docs/
  ├── FEATURES.md
  ├── ARCHITECTURE.md
- └── IMPLEMENTATION-PLAN.md
+ ├── IMPLEMENTATION-PLAN.md
+ └── PROGRESS.md
 ```
 
 ---
@@ -80,6 +84,39 @@ To install on a connected device:
 ```bash
 ./gradlew installDebug
 ```
+
+`installDebug` signs the app with an auto-generated debug key — fine for testing on your own
+device, but not accepted by the Play Store and not meant for distribution.
+
+---
+
+## Release Build
+
+This project does not yet have a signing key set up (`app/build.gradle.kts` has no
+`signingConfigs` block). To produce a real, signed release build:
+
+1. **Generate a keystore** (once, ever, for this app). Keep the file and its password safe and
+   backed up — losing it means never being able to publish an update under the same identity if
+   this app is ever published.
+   ```bash
+   keytool -genkeypair -v -keystore dicey-dicey.jks -keyalg RSA -keysize 2048 -validity 10000 -alias dicey-dicey
+   ```
+2. **Create `keystore.properties`** at the project root (already gitignored — never commit
+   signing credentials):
+   ```properties
+   storeFile=/absolute/path/to/dicey-dicey.jks
+   storePassword=...
+   keyAlias=dicey-dicey
+   keyPassword=...
+   ```
+3. **Add a `signingConfigs` block** to `app/build.gradle.kts` that reads from that file, and
+   reference it from the `release` build type. Not present yet — needs to be added when this is
+   actually set up.
+4. **Build:**
+   - `./gradlew assembleRelease` → a signed `.apk` at `app/build/outputs/apk/release/` — for
+     sideloading or sharing directly.
+   - `./gradlew bundleRelease` → a signed `.aab` at `app/build/outputs/bundle/release/` — the
+     format Google Play requires for uploads (not directly installable itself).
 
 ---
 

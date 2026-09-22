@@ -184,44 +184,67 @@ states so the wiring can be verified before animation is layered on.
 
 ---
 
-# Phase 6: Die Rendering
+# Phase 6: 3D Die Model & Rendering
+
+**Revised.** Originally "Die Rendering" via a flat Compose `Canvas` and `DieFace.dotGrid()`. That
+was built, tested on-device, and rejected as visually unconvincing (see `PROGRESS.md`'s log). The
+die is now a real 3D model — see `ARCHITECTURE.md` § 3D Die Model for the full design.
 
 ## Goal
 
-Replace the placeholder text from Phase 5 with a real drawn die face using `DieFace.dotGrid()`.
+Replace the flat Canvas-drawn die with the die rendered as a real 3D model, showing the correct
+settled face (no roll animation yet — that's Phase 7).
+
+## Prerequisite
+
+Blocked on the `.glb` model existing — model it in Blender per `ARCHITECTURE.md` § 3D Die Model
+first. Nothing in this phase can start before that file exists.
 
 ## Files
 
-- Update `ui/DieView.kt`
+- Add the exported `.glb` model under `app/src/main/assets/`.
+- Add the 3D rendering dependency to `app/build.gradle.kts` / `gradle/libs.versions.toml` — only
+  after recording the exact coordinates/version in `ARCHITECTURE.md` § Dependencies first.
+- Update `ui/DieView.kt`: remove `drawDieFace()`/the `Canvas` and embed the 3D view instead.
+- Delete `dotGrid()` from `domain/DieFace.kt` and its coverage in `test/domain/DieFaceTest.kt` —
+  retired, see `ARCHITECTURE.md`'s note under § DieFace.
 
 ## Requirements
 
-- Draw all six faces from `dotGrid()` (Canvas or equivalent Compose drawing — no image assets).
-- Scales correctly across screen sizes.
+- All six faces distinguishable and matching a traditional die (opposite faces sum to 7).
+- A face-value → orientation mapping (quaternion or Euler angles, defined in code) that correctly
+  shows `DiceState.Idle.faceValue` face-up.
+- Displays correctly across screen sizes.
 
 ## Done when
 
-- Every face 1–6 visually matches a traditional die when triggered.
-- Mark Phase 6 `Done` in `PROGRESS.md`.
+- Every face 1–6 visually matches a traditional die when the corresponding `Idle` state is shown
+  (verify by temporarily forcing each value, or once Phase 7 lands, by rolling repeatedly).
+- Mark Phase 6 `Done` in `PROGRESS.md`, including the actual rendering library coordinates used.
 
 ---
 
 # Phase 7: Rolling Animation
 
+**Revised.** Originally a 2D `graphicsLayer` fake-perspective spin. Rejected alongside Phase 6 for
+the same reason — see `PROGRESS.md`'s log. Now drives real rotation on the 3D model instead.
+
 ## Goal
 
-Add the ~5 second shake + settle animation, and move the `startRoll()`/`completeRoll()` pairing
-from "instant" (Phase 5's shortcut) to animation-driven, per `ARCHITECTURE.md`'s timing decision.
+Add the ~5 second 3D tumble + settle animation, and move the `startRoll()`/`completeRoll()`
+pairing from "instant" (Phase 5's shortcut) to animation-driven, per `ARCHITECTURE.md`'s timing
+decision.
 
 ## Files
 
-- Create `animation/RollAnimation.kt`
-- Update `ui/DieView.kt` (remove the Phase 5 immediate `completeRoll()` call)
+- Update `animation/RollAnimation.kt` to drive the 3D model's rotation instead of a 2D transform.
+- Update `ui/DieView.kt`.
 
 ## Requirements
 
-- On `startRoll()` returning `true`, a `LaunchedEffect(state)` (or equivalent) runs a shake
-  visual for ~5 seconds, then calls `completeRoll()`.
+- On `startRoll()` returning `true`, apply a randomized rotation to the model over ~5 seconds so
+  multiple real faces are visibly passing by (not just one face wobbling), then ease into the
+  exact orientation for `DiceState.Rolling.target` and call `completeRoll()`.
 - The ~5 second constant lives here, not in the domain layer.
 - Transition into the final result is smooth, not abrupt.
 - Taps during `Rolling` are already no-ops via the engine (Phase 4) — no extra UI-side flag
@@ -229,7 +252,8 @@ from "instant" (Phase 5's shortcut) to animation-driven, per `ARCHITECTURE.md`'s
 
 ## Done when
 
-- Tap → shake for ~5s → settles on the face `DiceEngine` picked at tap time.
+- Tap → visible 3D tumble for ~5s, multiple real faces passing by → settles on the face
+  `DiceEngine` picked at tap time.
 - Repeated taps during the animation do nothing.
 - Mark Phase 7 `Done` in `PROGRESS.md`.
 
@@ -243,7 +267,7 @@ Confirm the full flow end to end with nothing left stubbed from earlier phases.
 
 ## Done when
 
-- Full flow works: tap → shake → settle → tap again, indefinitely, no broken states.
+- Full flow works: tap → 3D tumble → settle → tap again, indefinitely, no broken states.
 - Mark Phase 8 `Done` in `PROGRESS.md`.
 
 ---

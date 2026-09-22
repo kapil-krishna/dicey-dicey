@@ -10,6 +10,10 @@
 /.idea/deploymentTargetSelector.xml
 /.idea/deviceManager.xml
 /.idea/gradle.xml
+/.idea/misc.xml
+keystore.properties
+*.jks
+*.keystore
 .DS_Store
 /build
 /captures

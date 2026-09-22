@@ -26,6 +26,13 @@ Do not introduce:
 
 A simple, slightly duplicated solution beats a clever abstract one.
 
+**One deliberate, explicit exception:** a 3D rendering library for the die model (see § 3D Die
+Model below). A pure-2D fake-perspective animation was tried and rejected as visually
+unconvincing — a flat layer with a perspective transform can only ever show one face at a time,
+which can't look like an actual tumbling object. This is a narrow, justified exception for one
+specific need, not a loosening of the rule in general — don't read it as license to add other
+frameworks.
+
 ---
 
 # Component Structure
@@ -59,9 +66,8 @@ object DiceRoller {
 
 ## DieFace
 
-Represents which of a traditional die's faces is showing, and which dots that face displays.
-This is still domain, not UI: it answers "which of the 9 grid cells are filled," not "how many
-pixels." Drawing pixels is Phase 6's job (UI layer).
+Represents which of a traditional die's faces is showing (1–6). Still domain, not UI — it's just
+"which face is this," independent of how it gets drawn.
 
 ```kotlin
 enum class DieFace(val pips: Int) {
@@ -71,13 +77,14 @@ enum class DieFace(val pips: Int) {
         fun fromInt(value: Int): DieFace // throws or clamps on values outside 1..6 — pick one and be consistent
     }
 }
-
-// 3x3 grid, outer list = rows (top to bottom), inner list = columns (left to right).
-// true = a dot is present at that cell.
-fun DieFace.dotGrid(): List<List<Boolean>>
 ```
 
-Requirement: layouts must match a traditional die (opposite faces sum to 7: 1↔6, 2↔5, 3↔4).
+**`dotGrid()` is retired.** The original 2D-programmatic-rendering approach (a `dotGrid(): List<List<Boolean>>`
+extension mapping a face to which cells of a 3x3 grid are lit, drawn with Compose `Canvas`) has
+been superseded by the 3D model approach below — see § 3D Die Model. `dotGrid()` and its Canvas
+drawing code in `ui/DieView.kt` should be deleted when the 3D model replaces them, not kept
+alongside as a fallback. Requirement carried forward either way: layouts must match a traditional
+die (opposite faces sum to 7: 1↔6, 2↔5, 3↔4).
 
 ## DiceState
 
@@ -132,7 +139,7 @@ Flow:
    no-op and returns `false`; the UI does nothing further. This keeps the single source of truth
    for "can a roll start" in one place (the engine) instead of duplicating it in UI state.
 2. If a roll started, the UI/animation layer runs a `LaunchedEffect(state)` (or equivalent) that
-   plays the shake animation for ~5 seconds.
+   plays the roll animation (the 3D tumble — see § 3D Die Model) for ~5 seconds.
 3. When that effect finishes, it calls `diceEngine.completeRoll()`, which flips `Rolling -> Idle`
    and the UI recomposes to show the final face.
 
@@ -142,14 +149,122 @@ job.
 
 ---
 
+# 3D Die Model
+
+The die is rendered as a real 3D model, not drawn in 2D. This replaces the original Phase 6/7
+approach (a flat Compose `Canvas` face plus a fake-perspective `graphicsLayer` rotation), which
+was built, tried on-device, and rejected as unconvincing — a single flat layer can only ever show
+one face at a time, so it read as a card tilting rather than an object tumbling. See
+`PROGRESS.md`'s log for that attempt.
+
+## Creating the asset
+
+- Model a cube with the pip pattern textured/sculpted onto each of its 6 faces in a 3D modeling
+  tool. **Blender** (free) is the standard choice — either model it from scratch or start from a
+  free pre-made low-poly die model.
+- Export as a single `.glb` file (glTF binary — the standard real-time 3D interchange format; it
+  bundles the mesh and textures together, so this is still one asset, not six separate per-face
+  images).
+- Requirement carried over from the retired `dotGrid()` approach: layouts must match a
+  traditional die (opposite faces sum to 7: 1↔6, 2↔5, 3↔4).
+- Bundle the exported `.glb` under `app/src/main/assets/` (create this directory when adding it).
+
+**Current asset:** `app/src/main/assets/die.v2.glb` (5.7MB, glTF 2.0 binary, Blender's glTF I/O
+v5.2.40 exporter, exported with modifiers applied and smooth shading). One mesh (`Cube`) with two
+primitives/materials: `Dot` (near-black, 21 separate connected components — the pips, ~7.4k
+vertices) and `Face` (light gray, the body, ~100k vertices) — no textures, so the pips are real
+geometry, not a painted-on texture. Export with **Apply Modifiers** checked and the mesh set to
+Shade Smooth — an earlier 74KB export without them rendered the dots as diamonds with faceted
+edges (the low-poly base mesh, not the subdivided one).
+
+## Rendering it
+
+Jetpack Compose has no native 3D renderer, so this needs a rendering library — the deliberate,
+documented exception under "Prefer Simplicity" above. **SceneView for Jetpack Compose**
+(`io.github.sceneview:sceneview:4.38.0`, wrapping Google's **Filament** renderer) is pinned in
+`gradle/libs.versions.toml` / `app/build.gradle.kts`. Key API surface used:
+
+```kotlin
+val engine = rememberEngine()
+val modelLoader = rememberModelLoader(engine)
+
+SceneView(modifier = Modifier.fillMaxSize(), engine = engine, modelLoader = modelLoader) {
+    rememberModelInstance(modelLoader, "die.v2.glb")?.let { instance ->
+        ModelNode(modelInstance = instance, rotation = Rotation(x = ..., y = ..., z = 0f))
+    }
+}
+```
+
+`ModelNode`'s `rotation` is Euler angles (`Rotation(x, y, z)` in degrees) and is reactive to
+Compose state — updating the backing state redraws the model at the new orientation, same as any
+other Compose state. The asset path `"die.v2.glb"` is resolved relative to `app/src/main/assets/`.
+
+## Driving the roll
+
+The rolling motion is still entirely code-driven — only the rendering mechanism changes:
+
+- **Idle**: the model sits at the fixed orientation that shows `DiceState.Idle.faceValue` face-up
+  (see § Face-value → orientation mapping below).
+- **Rolling**: the animation layer applies a randomized rotation to `rotationX`/`rotationY` over
+  ~5 seconds (same timing ownership as before — see § Decision above), so multiple real faces are
+  visible as it spins, then eases into the exact orientation for `DiceState.Rolling.target` and
+  calls `completeRoll()`. Settling must land on the correct angle **modulo 360°** relative to
+  however many full spins accumulated during the tumble (round to the nearest angle congruent to
+  the target, don't animate back to the raw target value directly) — otherwise it snaps backward
+  instead of settling smoothly, the same bug the original 2D attempt had.
+
+## Face-value → orientation mapping
+
+Determined by analyzing the actual mesh data in `die.v2.glb` (decoding the glTF's vertex buffer,
+grouping the `Dot` material's geometry into 21 connected components — one per pip — and
+classifying each by which of the 6 local axis directions its centroid is nearest to). Pip counts
+per local direction, in the model's own coordinate space:
+
+| Local direction | Pips | Opposite | Pips | Sum |
+|---|---|---|---|---|
+| +X | 6 | -X | 1 | 7 ✓ |
+| +Y | 4 | -Y | 3 | 7 ✓ |
+| +Z | 5 | -Z | 2 | 7 ✓ |
+
+All three pairs sum to 7, confirming this matches a correctly-built traditional die.
+
+Assuming the default camera looks toward the object along **-Z** (so the face pointing toward
+world **+Z** is the one visible to the viewer — SceneView's default single-object camera setup),
+the rotation needed to bring each face value to world +Z is a single-axis 90°/180° rotation
+(derived by solving each case with a standard rotation matrix — no guessing):
+
+| Face value | rotation.x | rotation.y | rotation.z |
+|---|---|---|---|
+| 1 | 0 | 90 | 0 |
+| 2 | 180 | 0 | 0 |
+| 3 | -90 | 0 | 0 |
+| 4 | 90 | 0 | 0 |
+| 5 | 0 | 0 | 0 |
+| 6 | 0 | -90 | 0 |
+
+**Unverified assumption:** the camera-faces-toward--Z direction, and SceneView/Filament's
+rotation sign convention matching the standard right-handed math used to derive this table. Both
+are plausible defaults but not confirmed on-device yet. If the wrong face shows at rest, the fix
+is mechanical, not a redesign: either the camera assumption is backwards (swap the target from
++Z to -Z and re-derive) or the sign convention is flipped (negate every non-zero angle above) —
+verify by rendering `Idle(1)` and checking whether face 1 is actually shown, then correct this
+table and this note.
+
+## Open questions still to resolve
+
+- Whether the `DieFace` enum is still worth keeping now that `dotGrid()` is gone, or whether
+  everything should just key off the raw `Int` face value directly (the table above already does).
+
+---
+
 # Animation Layer
 
 Responsibilities:
 
 - Own the ~5 second roll duration (the single place this constant lives).
-- Drive the visual shake while `state is DiceState.Rolling`.
+- Drive the 3D roll animation (see § 3D Die Model) while `state is DiceState.Rolling`.
 - Call `diceEngine.completeRoll()` when the animation finishes.
-- Provide a smooth transition into the settled face.
+- Provide a smooth transition into the settled face's exact orientation.
 
 Must not:
 
@@ -163,8 +278,8 @@ Must not:
 Responsibilities:
 
 - Own a single `DiceEngine` instance for the screen's lifetime (e.g. `remember { DiceEngine() }`).
-- Render the current `DiceState` (via `DieFace.dotGrid()` for the settled face, or a shake visual
-  while `Rolling`).
+- Embed and render the 3D die model (see § 3D Die Model), setting its orientation from the
+  current `DiceState`.
 - Forward taps to `diceEngine.startRoll()` unconditionally (see Decision above).
 - Contain no dice rules and no random number generation.
 
@@ -175,7 +290,7 @@ Responsibilities:
 ```
 User taps
   -> UI calls diceEngine.startRoll()               [domain: picks result, sets Rolling(target)]
-  -> UI recomposes on Rolling, animation layer starts a ~5s shake
+  -> UI recomposes on Rolling, animation layer starts a ~5s 3D tumble
   -> animation layer finishes, calls diceEngine.completeRoll()  [domain: Rolling -> Idle(target)]
   -> UI recomposes on Idle, shows final face
 ```
@@ -189,7 +304,7 @@ User taps
 - `DiceRoller.roll()` always returns 1..6.
 - Repeated rolls are not all identical (basic fairness sanity check — see
   `IMPLEMENTATION-PLAN.md` Phase 2 for the exact non-flaky approach).
-- `DieFace.fromInt()` covers 1..6 and each `dotGrid()` matches a traditional layout.
+- `DieFace.fromInt()` covers 1..6.
 - `DiceEngine`: initial state is `Idle`. `startRoll()` moves to `Rolling` and returns `true`.
   `startRoll()` while already `Rolling` returns `false` and does not change `target`.
   `completeRoll()` moves `Rolling(target)` to `Idle(target)`. `completeRoll()` while `Idle` is a
@@ -206,6 +321,11 @@ tap the die, watch it work).
 
 Kotlin standard library, Android SDK, and the AndroidX/Compose libraries already in
 `gradle/libs.versions.toml`. No new dependency without updating this doc first.
+
+**One sanctioned exception**, per § 3D Die Model above: **SceneView for Jetpack Compose**
+(`io.github.sceneview:sceneview:4.38.0`, wrapping Filament) to display the die's `.glb` model.
+Pinned in `gradle/libs.versions.toml` and `app/build.gradle.kts`. This is the only dependency
+allowed outside the "Kotlin/Android SDK/AndroidX" set, and only for this purpose.
 
 ---
 
