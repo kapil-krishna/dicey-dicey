@@ -16,7 +16,7 @@ sessions have no memory of this conversation; this file is the only thing that c
 
 - **Current phase:** All nine phases done — **v1 is complete.** Every `FEATURES.md` Acceptance
   Criteria box is checked.
-- **Last updated:** 2026-09-28
+- **Last updated:** 2026-09-30
 - **Build status:** `./gradlew build` passes clean. Installed and manually confirmed on the
   Pixel 10 Pro emulator: tap starts a roll, die tumbles in place (no toss/lift, removed per
   feedback) with a punchy-but-smooth settle, centred on a black background, using the final
@@ -46,6 +46,16 @@ Status values: `Not started`, `In progress`, `Done`, `Blocked`, `Needs rework`.
 
 Most recent entry first. Keep entries short — a few lines each, not a narrative.
 
+- **2026-09-30** — Test suite pass. Removed template `ExampleUnitTest`/`ExampleInstrumentedTest`.
+  Added `test/animation/RollAnimationTest.kt` (8 JVM tests: face → rotation table, invalid faces,
+  `spinTo` lands mod 360 on target with 4–7 turns either way, continuity) — needed
+  `targetRotation`/`spinTo` made `internal` and `spinTo` given an injectable `Random` (no
+  behaviour change). Added one `DiceEngineTest` case (target comes from the supplied `Random`).
+  Added instrumented `RollAnimationComposeTest` (7, virtual clock: ~5s completion, settles on all
+  six faces, snap, cancel) and `MainActivityTest` (launch smoke). Totals: 17 JVM + 8 on-device,
+  all passing. Sanity-checked by planting two bugs (swapped faces, 3s roll) — both caught.
+  `DieView`'s tap wiring stays manual. `ARCHITECTURE.md` § Testing Strategy rewritten to match
+  (also dropped its stale `DieFace.fromInt()` line). No new dependencies.
 - **2026-09-28** — Also stopped tracking `.idea/misc.xml` (add to `.gitignore` list — same
   reasoning as `deviceManager.xml`/`gradle.xml`: it recorded a machine-local JDK name that
   changed on its own during a Gradle sync). Fixed two stale lines in `FEATURES.md` left over from

@@ -301,19 +301,50 @@ User taps
 
 ## Domain tests (JVM unit tests, no Android, no coroutines)
 
+`test/domain/`:
+
 - `DiceRoller.roll()` always returns 1..6.
 - Repeated rolls are not all identical (basic fairness sanity check — see
   `IMPLEMENTATION-PLAN.md` Phase 2 for the exact non-flaky approach).
-- `DieFace.fromInt()` covers 1..6.
-- `DiceEngine`: initial state is `Idle`. `startRoll()` moves to `Rolling` and returns `true`.
-  `startRoll()` while already `Rolling` returns `false` and does not change `target`.
-  `completeRoll()` moves `Rolling(target)` to `Idle(target)`. `completeRoll()` while `Idle` is a
-  no-op.
+- `DiceEngine`: initial state is `Idle`. `startRoll()` moves to `Rolling`, returns `true`, and
+  picks its target with the supplied `Random`. `startRoll()` while already `Rolling` returns
+  `false` and does not change `target`. `completeRoll()` moves `Rolling(target)` to
+  `Idle(target)`. `completeRoll()` while `Idle` is a no-op.
 
-## UI/animation
+## Animation logic (JVM unit tests)
 
-Not unit tested in v1. Verified manually per `FEATURES.md`'s acceptance criteria (run the app,
-tap the die, watch it work).
+`test/animation/RollAnimationTest.kt`. `targetRotation` and `spinTo` in `RollAnimation.kt` are
+`internal` (not `private`) so they can be tested directly, and `spinTo` takes a
+`random: Random = Random.Default` parameter for the same reason `DiceRoller` does.
+
+- `targetRotation` matches the on-device-verified face → orientation table exactly, gives six
+  distinct orientations, and rejects values outside 1..6.
+- `spinTo` always lands on an angle equivalent (mod 360) to the target, adds 4–7 full turns in
+  either direction (both directions and both range ends are reachable), and continues from the
+  current angle rather than resetting.
+
+## Roll lifecycle (instrumented Compose tests — need a device/emulator)
+
+`androidTest/animation/RollAnimationComposeTest.kt` drives `rememberRollAnimation` on the Compose
+test clock with `autoAdvance = false`, so the ~5s roll is checked exactly without waiting for it:
+idle shows each face's resting orientation and never completes; a roll is in motion part-way
+through, completes exactly once between 4.9s and 5.1s, and settles on the target face (all six,
+back to back); returning to idle snaps to the exact resting angle; leaving `Rolling` early
+cancels without calling `onRollComplete`.
+
+`androidTest/MainActivityTest.kt` is a launch smoke test: the app starts (SceneView engine and
+`die.v2.glb` load) and stays resumed.
+
+Run with `./gradlew connectedDebugAndroidTest`. Not part of `./gradlew build`.
+
+## Still manual
+
+Tapping the die in `DieView` (tap → `startRoll()` → state flows into the animation) and the
+visual result. SceneView handles taps on its native surface outside Compose (see UI Layer), so
+Compose test input can't reliably reach it, and there's no hook to observe the engine from
+outside without changing `DieView` for tests. The pieces either side of that tap are covered
+above; the wiring is checked manually per `FEATURES.md`. The template theme files
+(`ui/theme/`) aren't tested.
 
 ---
 

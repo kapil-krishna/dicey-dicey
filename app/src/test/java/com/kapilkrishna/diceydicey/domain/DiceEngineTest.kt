@@ -23,6 +23,13 @@ class DiceEngineTest {
     }
 
     @Test
+    fun `startRoll picks its target using the supplied Random`() {
+        val engine = DiceEngine()
+        engine.startRoll(Random(7))
+        assertEquals(DiceState.Rolling(DiceRoller.roll(Random(7))), engine.state)
+    }
+
+    @Test
     fun `startRoll while already rolling is a no-op and returns false`() {
         val engine = DiceEngine()
         engine.startRoll(Random(1))

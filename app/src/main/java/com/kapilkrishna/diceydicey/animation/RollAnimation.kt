@@ -23,7 +23,7 @@ data class RollTransform(val rotationX: Float, val rotationY: Float)
  * rest on-device, that assumption (or the rotation sign convention) is what
  * to revisit — see the note in ARCHITECTURE.md.
  */
-private fun targetRotation(faceValue: Int): RollTransform = when (faceValue) {
+internal fun targetRotation(faceValue: Int): RollTransform = when (faceValue) {
     1 -> RollTransform(rotationX = 0f, rotationY = 90f)
     2 -> RollTransform(rotationX = 180f, rotationY = 0f)
     3 -> RollTransform(rotationX = -90f, rotationY = 0f)
@@ -83,9 +83,9 @@ fun rememberRollAnimation(
  * still lands exactly on the correct face), continuing smoothly from
  * [current] rather than resetting to 0 between rolls.
  */
-private fun spinTo(current: Float, target: Float): Float {
+internal fun spinTo(current: Float, target: Float, random: Random = Random.Default): Float {
     val nearest = target + kotlin.math.round((current - target) / 360f) * 360f
-    val direction = if (Random.nextBoolean()) 1 else -1
-    val spins = Random.nextInt(4, 8)
+    val direction = if (random.nextBoolean()) 1 else -1
+    val spins = random.nextInt(4, 8)
     return nearest + direction * spins * 360f
 }
